@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package chordrpc;
+
+// Communication is the service for chord communication
+service Communication {
+    rpc FindSuccessor(ID) returns (Node); // Returns successor node of ID.
+    rpc FindClosestPrecedingNode(ID) returns (Node); // Returns closest node of ID in the finger table.
+    rpc GetPredecessor(NN) returns (Node); // Returns current node's predecessor.
+    rpc GetSuccessor(NN) returns (Node); // Returns current node's successor.
+    rpc SetPredecessor(Node) returns (NN);
+    rpc SetSuccessor(Node) returns (NN);
+    rpc Notify(Node) returns (NN); // Notifies Chord that Node might be the predecessor.
+
+    // Store
+    rpc Get(GetRequest) returns (GetReply);
+    rpc Put(PutRequest) returns (PutReply);
+    rpc ListKeys(ListKeysRequest) returns (ListKeysReply);
+}
+
+// Node contains a node ID and ip address.
+message Node {
+    bytes id = 1;
+    string ip = 2;
+}
+
+message NN {} // Empty message
+
+// ID contains a node ID
+message ID {
+    bytes id = 1;
+}
+
+// For KV store
+message GetRequest {
+    string key = 1;
+}
+
+message GetReply {
+    string key = 1;
+}
+
+message PutRequest {
+    string key = 1;
+}
+
+message PutReply {
+}
+
+message ListKeysRequest {
+    bytes start = 1;
+    bytes end = 2;
+}
+
+message Key {
+    string key = 1;
+}
+
+message ListKeysReply {
+    repeated Key key = 1;
+}

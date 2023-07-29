@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"math/big"
 	"sync"
 
 	"chord-network/proto"
@@ -41,10 +42,30 @@ type Chord struct {
 	// tracer     *Tracer // for testing latency and hops
 	tracerRWMu sync.RWMutex
 
-	// config *Config
+	config *Config
 
 	logger *log.Logger
 	network *latency.Network
+}
+
+// Returns hashed values in []byte
+func (c *Chord) hash(IP string) []byte {
+	h := c.config.Hash()
+	
+	h.Write([]byte(IP))
+
+	idInt := big.NewInt(0)
+	idInt.SetBytes(h.Sum(nil)) // Sum() returns []byte, convert it into BigInt
+
+	maxVal := big.NewInt(0)
+	maxVal.Exp(big.NewInt(2), big.NewInt(int64(c.config.ringSize)), nil) // calculate 2^m
+	
+	idInt.Mod(idInt, maxVal)  // mod id to make it to be [0, 2^m - 1]
+	if idInt.Cmp(big.NewInt(0)) == 0 {
+		return []byte{0}
+	}
+
+	return idInt.Bytes()
 }
 
 func (c *Chord) get(ctx context.Context, key string) (string, error) {

@@ -4,7 +4,7 @@
 // 	protoc        v4.23.4
 // source: proto/communication.proto
 
-package gen
+package proto
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

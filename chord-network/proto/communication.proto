@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package main;
 
-option go_package = "github.com/example/path/gen;gen";
+option go_package = "chord-network/proto;proto";
 
 // Communication is the service for chord communication
 service Communication {

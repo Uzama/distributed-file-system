@@ -118,3 +118,36 @@ func (c *Chord) FindClosestPrecedingNode(id []byte) *proto.Node {
 
 	return c.Node
 }
+
+func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
+	
+	closest := c.FindClosestPrecedingNode(id)
+	
+	if idsEqual(closest.Id, c.Id) {
+		return closest, nil
+	}
+
+	closestSucc, err := c.getSuccessor(ctx, closest) // get closest successor
+	if err != nil {
+		return nil, err
+	}
+
+	c.tracer.traceNode(closest.Id)
+
+	for !betweenRightInclusive(id, closest.Id, closestSucc.Id) {
+		
+		closest, err := c.findClosestPrecedingNode(ctx, closest, id)
+		if err != nil {
+			return nil, err
+		}
+
+		closestSucc, err = c.getSuccessor(ctx, closest) // get closest successor
+		if err != nil {
+			return nil, err
+		}
+
+		c.tracer.traceNode(closest.Id)
+	}
+
+	return closest, nil
+}

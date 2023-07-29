@@ -24,8 +24,6 @@ service Communication {
     rpc Get(GetRequest) returns (GetReply);
 
     rpc Put(PutRequest) returns (PutReply);
-    
-    rpc ListKeys(ListKeysRequest) returns (ListKeysReply);
 }
 
 // Node contains a node ID and ip address.
@@ -55,17 +53,4 @@ message PutRequest {
 }
 
 message PutReply {
-}
-
-message ListKeysRequest {
-    bytes start = 1;
-    bytes end = 2;
-}
-
-message Key {
-    string key = 1;
-}
-
-message ListKeysReply {
-    repeated Key key = 1;
 }

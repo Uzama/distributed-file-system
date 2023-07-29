@@ -53,7 +53,7 @@ func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, err
 	return client, nil
 }
 
-func (c *Chord) notify(ctx context.Context, remote *proto.Node, potentialPredecessor *proto.Node) (*proto.NN, error) {
+func (c *Chord) _notify(ctx context.Context, remote *proto.Node, potentialPredecessor *proto.Node) (*proto.NN, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -65,7 +65,7 @@ func (c *Chord) notify(ctx context.Context, remote *proto.Node, potentialPredece
 	return result, err
 }
 
-func (c *Chord) findSuccessor(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
+func (c *Chord) _findSuccessor(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -78,7 +78,7 @@ func (c *Chord) findSuccessor(ctx context.Context, remote *proto.Node, id []byte
 }
 
 // Returns closest node based on ID
-func (c *Chord) findClosestPrecedingNode(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
+func (c *Chord) _findClosestPrecedingNode(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -90,7 +90,7 @@ func (c *Chord) findClosestPrecedingNode(ctx context.Context, remote *proto.Node
 	return result, err
 }
 
-func (c *Chord) getSuccessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
+func (c *Chord) _getSuccessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -102,7 +102,7 @@ func (c *Chord) getSuccessor(ctx context.Context, remote *proto.Node) (*proto.No
 	return result, err
 }
 
-func (c *Chord) getPredecessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
+func (c *Chord) _getPredecessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -114,7 +114,7 @@ func (c *Chord) getPredecessor(ctx context.Context, remote *proto.Node) (*proto.
 	return result, err
 }
 
-func (c *Chord) setPredecessor(ctx context.Context, remote *proto.Node, pred *proto.Node) (*proto.NN, error) {
+func (c *Chord) _setPredecessor(ctx context.Context, remote *proto.Node, pred *proto.Node) (*proto.NN, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -126,7 +126,7 @@ func (c *Chord) setPredecessor(ctx context.Context, remote *proto.Node, pred *pr
 	return result, err
 }
 
-func (c *Chord) setSuccessor(ctx context.Context, remote *proto.Node, succ *proto.Node) (*proto.NN, error) {
+func (c *Chord) _setSuccessor(ctx context.Context, remote *proto.Node, succ *proto.Node) (*proto.NN, error) {
 	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
@@ -138,7 +138,7 @@ func (c *Chord) setSuccessor(ctx context.Context, remote *proto.Node, succ *prot
 	return result, err
 }
 
-func (c *Chord) get(ctx context.Context, remoteIP string, key string) (string, error) {
+func (c *Chord) _get(ctx context.Context, remoteIP string, key string) (string, error) {
 	
 	client, err := c.connectToRemote(remoteIP)
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *Chord) get(ctx context.Context, remoteIP string, key string) (string, e
 	return result.Key, err
 }
 
-func (c *Chord) put(ctx context.Context, remoteIP string, key string) error {
+func (c *Chord) _put(ctx context.Context, remoteIP string, key string) error {
 	
 	client, err := c.connectToRemote(remoteIP)
 	if err != nil {

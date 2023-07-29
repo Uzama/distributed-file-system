@@ -28,7 +28,6 @@ const (
 	Communication_Notify_FullMethodName                   = "/main.Communication/Notify"
 	Communication_Get_FullMethodName                      = "/main.Communication/Get"
 	Communication_Put_FullMethodName                      = "/main.Communication/Put"
-	Communication_ListKeys_FullMethodName                 = "/main.Communication/ListKeys"
 )
 
 // CommunicationClient is the client API for Communication service.
@@ -45,7 +44,6 @@ type CommunicationClient interface {
 	// Store
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetReply, error)
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutReply, error)
-	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysReply, error)
 }
 
 type communicationClient struct {
@@ -137,15 +135,6 @@ func (c *communicationClient) Put(ctx context.Context, in *PutRequest, opts ...g
 	return out, nil
 }
 
-func (c *communicationClient) ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysReply, error) {
-	out := new(ListKeysReply)
-	err := c.cc.Invoke(ctx, Communication_ListKeys_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CommunicationServer is the server API for Communication service.
 // All implementations must embed UnimplementedCommunicationServer
 // for forward compatibility
@@ -160,8 +149,7 @@ type CommunicationServer interface {
 	// Store
 	Get(context.Context, *GetRequest) (*GetReply, error)
 	Put(context.Context, *PutRequest) (*PutReply, error)
-	ListKeys(context.Context, *ListKeysRequest) (*ListKeysReply, error)
-	mustEmbedUnimplementedCommunicationServer()
+	
 }
 
 // UnimplementedCommunicationServer must be embedded to have forward compatible implementations.
@@ -195,16 +183,12 @@ func (UnimplementedCommunicationServer) Get(context.Context, *GetRequest) (*GetR
 func (UnimplementedCommunicationServer) Put(context.Context, *PutRequest) (*PutReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Put not implemented")
 }
-func (UnimplementedCommunicationServer) ListKeys(context.Context, *ListKeysRequest) (*ListKeysReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListKeys not implemented")
-}
-func (UnimplementedCommunicationServer) mustEmbedUnimplementedCommunicationServer() {}
 
 // UnsafeCommunicationServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to CommunicationServer will
 // result in compilation errors.
 type UnsafeCommunicationServer interface {
-	mustEmbedUnimplementedCommunicationServer()
+
 }
 
 func RegisterCommunicationServer(s grpc.ServiceRegistrar, srv CommunicationServer) {
@@ -373,24 +357,6 @@ func _Communication_Put_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Communication_ListKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListKeysRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CommunicationServer).ListKeys(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Communication_ListKeys_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CommunicationServer).ListKeys(ctx, req.(*ListKeysRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Communication_ServiceDesc is the grpc.ServiceDesc for Communication service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -433,10 +399,6 @@ var Communication_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Put",
 			Handler:    _Communication_Put_Handler,
-		},
-		{
-			MethodName: "ListKeys",
-			Handler:    _Communication_ListKeys_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

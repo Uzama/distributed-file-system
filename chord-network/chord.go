@@ -5,11 +5,15 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"net"
+	"os"
 	"sync"
+	"time"
 
 	"chord-network/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/benchmark"
 	"google.golang.org/grpc/benchmark/latency"
 )
 
@@ -43,6 +47,91 @@ type Chord struct {
 	network *latency.Network
 }
 
+func NewChord(config *Config, ip string, joinNode string) (*Chord, error) {
+	
+	ctx := context.Background()
+
+	chord := &Chord{
+		Node:   new(proto.Node),
+		config: config,
+	}
+
+	chord.Ip = ip
+	chord.Id = chord.hash(ip)
+
+	chord.fingerTable = make([]*proto.Node, chord.config.ringSize)
+	chord.stopChan = make(chan struct{})
+	chord.connectionsPool = make(map[string]*GRPCConn)
+	chord.store = NewStore()
+	chord.tracer = MakeTracer()
+	chord.logger = log.New(os.Stderr, "logger: ", log.Ltime|log.Lshortfile) 
+
+	chord.network = &latency.Network{Kbps: 100 * 1024, Latency: 2 * time.Millisecond, MTU: 1500}
+	l, err := net.Listen("tcp", ip)
+	if err != nil {
+		chord.logger.Println(err)
+		return nil, err
+	}
+	
+	listener := chord.network.Listener(l) // listener with latency injected
+
+	chord.grpcServer = grpc.NewServer()
+
+	proto.RegisterCommunicationServer(chord.grpcServer, chord)
+
+	err = chord.join(ctx, &proto.Node{Ip: joinNode})
+
+	if err != nil {
+		chord.logger.Println(err)
+		return nil, err
+	}
+
+	info := benchmark.ServerInfo{Type: "protobuf", Listener: l}
+
+	benchmark.StartServer(info)
+
+	go chord.grpcServer.Serve(listener)
+
+	go func() {
+		
+		ticker := time.NewTicker(chord.config.stabilizeTime)
+		
+		for {
+			select {
+			case <-ticker.C:
+				err := chord.stabilize(ctx)
+				if err != nil {
+					chord.logger.Println(err)
+				}
+			case <-chord.stopChan:
+				ticker.Stop()
+				chord.logger.Printf("%s %d stopping stabilize\n", chord.Ip, chord.Id)
+				return
+			}
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(chord.config.fixFingerTime)
+		i := 0
+		for {
+			select {
+			case <-ticker.C:
+				i, err = chord.fixFingers(ctx, i)
+				if err != nil {
+					chord.logger.Println(err)
+				}
+			case <-chord.stopChan:
+				ticker.Stop()
+				chord.logger.Printf("%s %d stopping fixing fingers\n", chord.Ip, chord.Id)
+				return
+			}
+		}
+	}()
+
+	return chord, nil
+}
+
 // Returns hashed values in []byte
 func (c *Chord) hash(IP string) []byte {
 	
@@ -64,7 +153,7 @@ func (c *Chord) hash(IP string) []byte {
 	return idInt.Bytes()
 }
 
-func (c *Chord) Get(ctx context.Context, key string) (string, error) {
+func (c *Chord) get(ctx context.Context, key string) (string, error) {
 	
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
@@ -76,7 +165,7 @@ func (c *Chord) Get(ctx context.Context, key string) (string, error) {
 	return key, nil
 }
 
-func (c *Chord) Put(ctx context.Context, key string) {
+func (c *Chord) put(ctx context.Context, key string) {
 	
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
@@ -85,11 +174,11 @@ func (c *Chord) Put(ctx context.Context, key string) {
 }
 
 // Takes in a key, returns the ip address of the node that should store the key
-func (c *Chord) Lookup(ctx context.Context, key string) (string, error) {
+func (c *Chord) lookup(ctx context.Context, key string) (string, error) {
 	
 	keyHased := c.hash(key)
 	
-	successor, err := c.FindSuccessor(ctx, keyHased) 
+	successor, err := c.findSuccessor(ctx, keyHased) 
 	if err != nil {                           
 		c.logger.Println(err)
 		return "", err
@@ -98,7 +187,7 @@ func (c *Chord) Lookup(ctx context.Context, key string) (string, error) {
 	return successor.Ip, nil
 }
 
-func (c *Chord) GetSuccessor() *proto.Node {
+func (c *Chord) getSuccessor() *proto.Node {
 	
 	c.fingerLock.RLock()
 	defer c.fingerLock.RUnlock()
@@ -106,7 +195,7 @@ func (c *Chord) GetSuccessor() *proto.Node {
 	return c.fingerTable[0]
 }
 
-func (c *Chord) GetPredecessor() *proto.Node {
+func (c *Chord) getPredecessor() *proto.Node {
 	
 	c.predecessorLock.RLock()
 	defer c.predecessorLock.RUnlock()
@@ -115,7 +204,7 @@ func (c *Chord) GetPredecessor() *proto.Node {
 }
 
 // Returns the closest finger based on fingerTablex
-func (c *Chord) FindClosestPrecedingNode(id []byte) *proto.Node {
+func (c *Chord) findClosestPrecedingNode(ctx context.Context, id []byte) *proto.Node {
 	
 	c.fingerLock.RLock()
 	defer c.fingerLock.RUnlock()
@@ -134,15 +223,15 @@ func (c *Chord) FindClosestPrecedingNode(id []byte) *proto.Node {
 	return c.Node
 }
 
-func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
+func (c *Chord) findPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
 	
-	closest := c.FindClosestPrecedingNode(id)
+	closest := c.findClosestPrecedingNode(ctx, id)
 	
 	if idsEqual(closest.Id, c.Id) {
 		return closest, nil
 	}
 
-	closestSucc, err := c.getSuccessor(ctx, closest) // get closest successor
+	closestSucc, err := c._getSuccessor(ctx, closest) // get closest successor
 	if err != nil {
 		return nil, err
 	}
@@ -151,12 +240,12 @@ func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, er
 
 	for !betweenRightInclusive(id, closest.Id, closestSucc.Id) {
 		
-		closest, err := c.findClosestPrecedingNode(ctx, closest, id)
+		closest, err := c._findClosestPrecedingNode(ctx, closest, id)
 		if err != nil {
 			return nil, err
 		}
 
-		closestSucc, err = c.getSuccessor(ctx, closest) // get closest successor
+		closestSucc, err = c._getSuccessor(ctx, closest) // get closest successor
 		if err != nil {
 			return nil, err
 		}
@@ -168,27 +257,27 @@ func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, er
 }
 
 // For fix finger tables
-func (c *Chord) FFindPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
+func (c *Chord) ffindPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
 	
-	closest := c.FindClosestPrecedingNode(id)
+	closest := c.findClosestPrecedingNode(ctx, id)
 	
 	if idsEqual(closest.Id, c.Id) {
 		return closest, nil
 	}
 
-	closestSucc, err := c.getSuccessor(ctx, closest) // get closest successor
+	closestSucc, err := c._getSuccessor(ctx, closest) // get closest successor
 	if err != nil {
 		return nil, err
 	}
 
 	for !betweenRightInclusive(id, closest.Id, closestSucc.Id) {
 		
-		closest, err := c.findClosestPrecedingNode(ctx, closest, id)
+		closest, err := c._findClosestPrecedingNode(ctx, closest, id)
 		if err != nil {
 			return nil, err
 		}
 
-		closestSucc, err = c.getSuccessor(ctx, closest) // get closest successor
+		closestSucc, err = c._getSuccessor(ctx, closest) // get closest successor
 		if err != nil {
 			return nil, err
 		}
@@ -197,19 +286,19 @@ func (c *Chord) FFindPredecessor(ctx context.Context, id []byte) (*proto.Node, e
 	return closest, nil
 }
 
-func (c *Chord) FindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
+func (c *Chord) findSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
 	
 	c.tracerLock.Lock()
 	defer c.tracerLock.Unlock()
 
 	c.tracer.startTracer(c.Id, id)
 	
-	pred, err := c.FindPredecessor(ctx, id)
+	pred, err := c.findPredecessor(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	successor, err := c.getSuccessor(ctx, pred)
+	successor, err := c._getSuccessor(ctx, pred)
 	if err != nil {
 		return nil, err
 	}
@@ -221,16 +310,16 @@ func (c *Chord) FindSuccessor(ctx context.Context, id []byte) (*proto.Node, erro
 }
 
 // For fix finger tables
-func (c *Chord) FFindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
+func (c *Chord) ffindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
 
 	c.tracer.startTracer(c.Id, id)
 	
-	pred, err := c.FFindPredecessor(ctx, id)
+	pred, err := c.ffindPredecessor(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	successor, err := c.getSuccessor(ctx, pred)
+	successor, err := c._getSuccessor(ctx, pred)
 	if err != nil {
 		return nil, err
 	}
@@ -258,13 +347,13 @@ func (c *Chord) fingerStart(i int) []byte {
 }
 
 // Periodically refresh finger table 
-func (c *Chord) FixFingers(ctx context.Context, i int) (int, error) {
+func (c *Chord) fixFingers(ctx context.Context, i int) (int, error) {
 	
 	i = (i + 1) % c.config.ringSize
 	
 	fingerStart := c.fingerStart(i)
 	
-	finger, err := c.FFindSuccessor(ctx, fingerStart)
+	finger, err := c.ffindSuccessor(ctx, fingerStart)
 	if err != nil {
 		return 0, err
 	}
@@ -281,7 +370,7 @@ func (c *Chord) StopFixFingers() {
 }
 
 // Rransfer keys from current node to target
-func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []byte, end []byte) (int, error) {
+func (c *Chord) transferKeys(ctx context.Context, target *proto.Node, start []byte, end []byte) (int, error) {
 	
 	c.storeLock.Lock()
 	defer c.storeLock.Unlock()
@@ -294,7 +383,7 @@ func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []by
 		
 		if betweenRightInclusive(hashedKey, start, end) {
 
-			err := c.put(ctx, target.Ip, key)
+			err := c._put(ctx, target.Ip, key)
 			if err != nil {
 				return count, err
 			}
@@ -308,7 +397,7 @@ func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []by
 	return count, nil
 }
 
-func (c *Chord) Notify(ctx context.Context, potentialPredecessor *proto.Node) error {
+func (c *Chord) notify(ctx context.Context, potentialPredecessor *proto.Node) error {
 	
 	c.predecessorLock.Lock()
 	defer c.predecessorLock.Unlock()
@@ -326,7 +415,7 @@ func (c *Chord) Notify(ctx context.Context, potentialPredecessor *proto.Node) er
 		if prevPredecessor != nil {
 			
 			if between(c.predecessor.Id, prevPredecessor.Id, c.Id) {
-				c.TransferKeys(ctx, c.predecessor, prevPredecessor.Id, c.predecessor.Id) // transfer our key to new predecessor
+				c.transferKeys(ctx, c.predecessor, prevPredecessor.Id, c.predecessor.Id) // transfer our key to new predecessor
 			}
 		}
 	}
@@ -335,11 +424,11 @@ func (c *Chord) Notify(ctx context.Context, potentialPredecessor *proto.Node) er
 }
 
 // Periodically verify node's immediate successor
-func (c *Chord) Stabilize(ctx context.Context) error {
+func (c *Chord) stabilize(ctx context.Context) error {
 	
-	successor := c.GetSuccessor()
+	successor := c.getSuccessor()
 	
-	x, err := c.getPredecessor(ctx, successor)
+	x, err := c._getPredecessor(ctx, successor)
 
 	if x == nil || err != nil {
 		c.logger.Println("RPC fails or the successor node died")
@@ -348,7 +437,7 @@ func (c *Chord) Stabilize(ctx context.Context) error {
 
 	// the pred of our succ is nil, it hasn't updated it pred, still notify
 	if x.Id == nil {
-		_, err = c.notify(ctx, c.GetSuccessor(), c.Node)
+		_, err = c._notify(ctx, c.getSuccessor(), c.Node)
 		return err
 	}
 
@@ -359,12 +448,12 @@ func (c *Chord) Stabilize(ctx context.Context) error {
 		c.fingerLock.Unlock()
 	}
 
-	_, err = c.notify(ctx, c.GetSuccessor(), c.Node)
+	_, err = c._notify(ctx, c.getSuccessor(), c.Node)
 	
 	return err
 }
 
-func (c *Chord) Join(ctx context.Context, joinNode *proto.Node) error {
+func (c *Chord) join(ctx context.Context, joinNode *proto.Node) error {
 	
 	c.fingerLock.Lock()
 	c.fingerLock.Unlock()
@@ -376,7 +465,7 @@ func (c *Chord) Join(ctx context.Context, joinNode *proto.Node) error {
 		return nil
 	}
 
-	successor, err := c.findSuccessor(ctx, joinNode, c.Id)
+	successor, err := c._findSuccessor(ctx, joinNode, c.Id)
 	if err != nil {
 		return err 
 	}
@@ -390,7 +479,7 @@ func (c *Chord) Join(ctx context.Context, joinNode *proto.Node) error {
 	return nil
 }
 
-func (c *Chord) Leave(ctx context.Context) {
+func (c *Chord) leave(ctx context.Context) {
 	
 	c.logger.Printf("%s leaving the ring\n", c.Id)
 
@@ -398,23 +487,23 @@ func (c *Chord) Leave(ctx context.Context) {
 	
 	c.grpcServer.GracefulStop()
 
-	successor := c.GetSuccessor()
-	pred := c.GetPredecessor()
+	successor := c.getSuccessor()
+	pred := c.getPredecessor()
 
 	if !idsEqual(successor.Id, c.Id) && pred != nil {
 		
-		count, _ := c.TransferKeys(ctx, successor, pred.Id, c.Id)
+		count, _ := c.transferKeys(ctx, successor, pred.Id, c.Id)
 		c.logger.Printf("number of transfered keys: %d\n", count)
 
-		c.setPredecessor(ctx, successor, pred)
-		c.setSuccessor(ctx, pred, successor)
+		c._setPredecessor(ctx, successor, pred)
+		c._setSuccessor(ctx, pred, successor)
 	}
 
-	c.Stop()
+	c.stop()
 }
 
 // Gracefully stops the instance
-func (c *Chord) Stop() {
+func (c *Chord) stop() {
 	
 	c.logger.Printf("%s stopping outgoing connections\n", c.Ip)
 	

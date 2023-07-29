@@ -84,6 +84,20 @@ func (c *Chord) Put(ctx context.Context, key string) {
 	c.store.Put(ctx, key)
 }
 
+// Takes in a key, returns the ip address of the node that should store the key
+func (c *Chord) Lookup(ctx context.Context, key string) (string, error) {
+	
+	keyHased := c.hash(key)
+	
+	successor, err := c.FindSuccessor(ctx, keyHased) 
+	if err != nil {                           
+		c.logger.Println(err)
+		return "", err
+	}
+
+	return successor.Ip, nil
+}
+
 func (c *Chord) GetSuccessor() *proto.Node {
 	
 	c.fingerLock.RLock()

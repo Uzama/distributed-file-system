@@ -100,3 +100,13 @@ func (c *Chord) getPredecessor(remote *proto.Node) (*proto.Node, error) {
 	result, err := client.GetPredecessor(context.Background(), &proto.NN{})
 	return result, err
 }
+
+func (c *Chord) setPredecessor(remote *proto.Node, pred *proto.Node) (*proto.NN, error) {
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.SetPredecessor(context.Background(), pred)
+	return result, err
+}

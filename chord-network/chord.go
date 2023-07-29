@@ -20,6 +20,10 @@ import (
 type Chord struct {
 	*proto.Node 
 
+	username string
+
+	bootstrapConn BootstrapConn
+
 	predecessor *proto.Node
 	predecessorLock sync.RWMutex
 
@@ -47,7 +51,7 @@ type Chord struct {
 	network *latency.Network
 }
 
-func newChord(config *Config, ip string, joinNode string) (*Chord, error) {
+func newChord(config *Config, ip string, joinNode string, username string, bootstrapConn BootstrapConn) (*Chord, error) {
 	
 	ctx := context.Background()
 
@@ -58,6 +62,8 @@ func newChord(config *Config, ip string, joinNode string) (*Chord, error) {
 
 	chord.Ip = ip
 	chord.Id = chord.hash(ip)
+	chord.username = username
+	chord.bootstrapConn = bootstrapConn
 
 	chord.fingerTable = make([]*proto.Node, chord.config.ringSize)
 	chord.stopChan = make(chan struct{})
@@ -480,6 +486,10 @@ func (c *Chord) join(ctx context.Context, joinNode *proto.Node) error {
 }
 
 func (c *Chord) leave(ctx context.Context) {
+
+	c.logger.Printf("%s unregister from bootstrap server\n", c.Id)
+
+	c.bootstrapConn.UnRegisterWithBootstrapServer()
 	
 	c.logger.Printf("%s leaving the ring\n", c.Id)
 
@@ -530,7 +540,7 @@ func (c *Chord) Print() string {
 	c.storeLock.RLock()
 	defer c.storeLock.RUnlock()
 	
-	str := fmt.Sprintf("id: %v ip: %v\n",  c.Id, c.Ip)
+	str := fmt.Sprintf("id: %v ip: %v username: %s \n",  c.Id, c.Ip, c.username)
 
 	str += "Finger table:\n"
 	str += "ith | start | successor\n"

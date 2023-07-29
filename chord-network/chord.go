@@ -34,7 +34,7 @@ type Chord struct {
 	connLock sync.RWMutex
 
 	tracer *Tracer
-	tracerRWMu sync.RWMutex
+	tracerLock sync.RWMutex
 
 	config *Config
 
@@ -150,4 +150,27 @@ func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, er
 	}
 
 	return closest, nil
+}
+
+func (c *Chord) FindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
+	
+	c.tracerLock.Lock()
+	defer c.tracerLock.Unlock()
+
+	c.tracer.startTracer(c.Id, id)
+	
+	pred, err := c.FindPredecessor(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	successor, err := c.getSuccessor(ctx, pred)
+	if err != nil {
+		return nil, err
+	}
+
+	c.tracer.traceNode(successor.Id)
+	c.tracer.endTracer(successor.Id)
+
+	return successor, nil
 }

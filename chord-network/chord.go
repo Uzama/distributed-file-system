@@ -288,3 +288,29 @@ func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []by
 
 	return count, nil
 }
+
+func (c *Chord) Notify(ctx context.Context, potentialPredecessor *proto.Node) error {
+	
+	c.predecessorLock.Lock()
+	defer c.predecessorLock.Unlock()
+
+	var prevPredecessor *proto.Node
+	
+	if c.predecessor == nil || between(potentialPredecessor.Id, c.predecessor.Id, c.Id) {
+		
+		if c.predecessor != nil {
+			prevPredecessor = c.predecessor
+		}
+
+		c.predecessor = potentialPredecessor
+		
+		if prevPredecessor != nil {
+			
+			if between(c.predecessor.Id, prevPredecessor.Id, c.Id) {
+				c.TransferKeys(ctx, c.predecessor, prevPredecessor.Id, c.predecessor.Id) // transfer our key to new predecessor
+			}
+		}
+	}
+
+	return nil
+}

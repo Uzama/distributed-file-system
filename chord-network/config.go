@@ -5,18 +5,19 @@ import (
 	"hash"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/benchmark/latency"
 )
 
 var (
 	//Local simulates local network.
-	Local = latency.Network{0, 0, 0}
+	Local = latency.Network{Kbps: 0, Latency: 0, MTU: 0}
 	//LAN simulates local area network network.
-	LAN = latency.Network{100 * 1024, 2 * time.Millisecond, 1500}
+	LAN = latency.Network{Kbps: 100 * 1024, Latency: 2 * time.Millisecond, MTU: 1500}
 	//WAN simulates wide area network.
-	WAN = latency.Network{20 * 1024, 30 * time.Millisecond, 1500}
+	WAN = latency.Network{Kbps: 20 * 1024, Latency: 30 * time.Millisecond, MTU: 1500}
 	//Longhaul simulates bad network.
-	Longhaul = latency.Network{1000 * 1024, 200 * time.Millisecond, 9000}
+	Longhaul = latency.Network{Kbps: 1000 * 1024, Latency: 200 * time.Millisecond, MTU: 9000}
 )
 
 // Config contains configs for chord instance

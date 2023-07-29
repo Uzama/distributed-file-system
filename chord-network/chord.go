@@ -12,12 +12,6 @@ import (
 	"google.golang.org/grpc/benchmark/latency"
 )
 
-type GRPCConn struct {
-	IP     string
-	Client proto.CommunicationClient 
-	Conn   *grpc.ClientConn
-}
-
 type Chord struct {
 	*proto.Node 
 

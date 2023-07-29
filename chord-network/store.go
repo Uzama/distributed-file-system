@@ -8,6 +8,8 @@ import (
 type Store interface {
 	Get(ctx context.Context, key string) (string, error)
 	Put(ctx context.Context, key string) (error)
+	GetKeys(ctx context.Context) ([]string)
+	Delete(ctx context.Context, key string)
 }
 
 type store struct {
@@ -32,4 +34,22 @@ func (s *store) Put(ctx context.Context, key string) (error) {
 	s.store[key] = struct{}{}
 
 	return nil
+}
+
+func (s *store) GetKeys(ctx context.Context) ([]string) {
+
+	keys := make([]string, len(s.store))
+
+	i := 0
+	for k := range s.store {
+		keys[i] = k
+		i++
+	}
+
+	return keys
+}
+
+func (s *store) Delete(ctx context.Context, key string) {
+
+	delete(s.store, key)
 }

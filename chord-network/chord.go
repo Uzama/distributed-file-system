@@ -260,3 +260,31 @@ func (c *Chord) FixFingers(ctx context.Context, i int) (int, error) {
 
 	return i, nil
 }
+
+// Rransfer keys from current node to target
+func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []byte, end []byte) (int, error) {
+	
+	c.storeLock.Lock()
+	defer c.storeLock.Unlock()
+
+	count := 0
+	
+	for _, key := range c.store.GetKeys(ctx) {
+		
+		hashedKey := c.hash(key)
+		
+		if betweenRightInclusive(hashedKey, start, end) {
+
+			err := c.put(ctx, target.Ip, key)
+			if err != nil {
+				return count, err
+			}
+
+			count++
+
+			c.store.Delete(ctx, key)
+		}
+	}
+
+	return count, nil
+}

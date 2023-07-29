@@ -6,12 +6,23 @@ import (
 	"sync"
 )
 
-type Store struct {
+type Store interface {
+	Get(ctx context.Context, key string) (string, error)
+	Put(ctx context.Context, key string) (error)
+}
+
+type store struct {
 	store map[string]struct{}
 	mutex    *sync.RWMutex
 }
 
-func (s *Store) Get(ctx context.Context, key string) (string, error) {
+func NewStore() Store {
+	return &store{
+		store: make(map[string]struct{}),
+	}
+}
+
+func (s *store) Get(ctx context.Context, key string) (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -22,7 +33,7 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 	return "", errors.New("key not existing")
 }
 
-func (s *Store) Put(ctx context.Context, key string) (error) {
+func (s *store) Put(ctx context.Context, key string) (error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	

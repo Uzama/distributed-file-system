@@ -59,3 +59,13 @@ func (c *Chord) notify(remote *proto.Node, potentialPredecessor *proto.Node) (*p
 	result, err := client.Notify(context.Background(), potentialPredecessor)
 	return result, err
 }
+
+func (c *Chord) findSuccessor(remote *proto.Node, id []byte) (*proto.Node, error) {
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.FindSuccessor(context.Background(), &proto.ID{Id: id})
+	return result, err
+}

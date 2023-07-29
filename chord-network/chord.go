@@ -210,7 +210,7 @@ func (c *Chord) FFindSuccessor(ctx context.Context, id []byte) (*proto.Node, err
 
 	c.tracer.startTracer(c.Id, id)
 	
-	pred, err := c.FindPredecessor(ctx, id)
+	pred, err := c.FFindPredecessor(ctx, id)
 	if err != nil {
 		return nil, err
 	}

@@ -14,3 +14,17 @@ func DebugPrintf(format string, a ...interface{}) (n int, err error) {
 	}
 	return
 }
+
+// if error log the error
+func logOnError(source string, err error) {
+	if err != nil {
+		log.Println(source, ": ", err)
+	}
+}
+
+// if error, log and abort the program
+func logAndExitOnError(source string, err error) {
+	if err != nil {
+		log.Fatal(source+": ", err)
+	}
+}

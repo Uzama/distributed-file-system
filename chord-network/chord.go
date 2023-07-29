@@ -62,7 +62,7 @@ func (c *Chord) hash(IP string) []byte {
 	return idInt.Bytes()
 }
 
-func (c *Chord) Get(ctx context.Context, key string) (string, error) {
+func (c *Chord) get(ctx context.Context, key string) (string, error) {
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
 	
@@ -73,7 +73,7 @@ func (c *Chord) Get(ctx context.Context, key string) (string, error) {
 	return key, nil
 }
 
-func (c *Chord) Put(ctx context.Context, key string) {
+func (c *Chord) put(ctx context.Context, key string) {
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
 

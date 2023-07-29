@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 type BootstrapConn struct {
@@ -23,12 +24,14 @@ func NewBootstrapConn(ip string, port int, portLength int, username string) Boot
 	}
 }
 
-func (b BootstrapConn) RegisterWithBootstrapServer() {
+func (b BootstrapConn) RegisterWithBootstrapServer() (string, error) {
 	
 	conn, err := net.Dial("udp", "localhost:55555")
 	if err != nil {
-		log.Fatalln(err)
+		return "", err
 	}
+
+	defer conn.Close()
 
 	length := 11 + len(b.ip) + b.portLength + len(b.username)
 	formattedNumber := fmt.Sprintf("%04d", length)
@@ -41,15 +44,22 @@ func (b BootstrapConn) RegisterWithBootstrapServer() {
     
     fmt.Fprintf(conn, text)
 
-    _, err = bufio.NewReader(conn).Read(p)
-    if err == nil {
-        fmt.Printf("%s\n", p)
-    } else {
-        fmt.Printf("Some error %v\n", err)
+    n, err := bufio.NewReader(conn).Read(p)
+    if err != nil {
+       log.Fatal(err)
     }
 
-    conn.Close()
+	responses := strings.Split(string(p[:n]), " ")
 
+	if string(responses[2]) == "0" {
+		return "", nil
+	}
+
+	if string(responses[2]) == "1" || string(responses[2]) == "2" {
+		return responses[3] + ":" + responses[4], nil
+	}
+
+	return "", fmt.Errorf("registration faield: %s", string(p[:n]))
 }
 
 func (b BootstrapConn) UnRegisterWithBootstrapServer() {
@@ -71,11 +81,11 @@ func (b BootstrapConn) UnRegisterWithBootstrapServer() {
     fmt.Fprintf(conn, text)
 
     _, err = bufio.NewReader(conn).Read(p)
-    if err == nil {
-        fmt.Printf("%s\n", p)
-    } else {
-        fmt.Printf("Some error %v\n", err)
-    }
+    if err != nil {
+		fmt.Printf("Some error %v\n", err)
+    } 
+
+	fmt.Printf("%s\n", p)
 	
     conn.Close()
 }

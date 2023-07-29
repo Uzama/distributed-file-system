@@ -44,14 +44,17 @@ func main() {
 	
 	b := NewBootstrapConn(ip, port, portLength, username)
 
-	b.RegisterWithBootstrapServer()
+	joinNode, err := b.RegisterWithBootstrapServer()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// join with chord network or create new network
 	connection := arg[0]
 
 	cfg := defaultConfig()
 
-	h, err := newChord(cfg, connection, "", username, b)
+	h, err := newChord(cfg, connection, joinNode, username, b)
 	if err != nil {
 		log.Fatalln(err)
 	}

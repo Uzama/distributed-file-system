@@ -37,10 +37,8 @@ type Config struct {
 	networkSimulator *latency.Network
 }
 
-var defaultConfig = DefaultConfig()
-
 // DefaultConfig returns a default configuration for chord
-func DefaultConfig() *Config {
+func defaultConfig() *Config {
 	config := &Config{
 		stabilizeTime: 50 * time.Millisecond,
 		fixFingerTime: 50 * time.Millisecond,

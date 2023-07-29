@@ -13,7 +13,6 @@ import (
 	"chord-network/proto"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/benchmark"
 	"google.golang.org/grpc/benchmark/latency"
 )
 
@@ -47,7 +46,7 @@ type Chord struct {
 	network *latency.Network
 }
 
-func NewChord(config *Config, ip string, joinNode string) (*Chord, error) {
+func newChord(config *Config, ip string, joinNode string) (*Chord, error) {
 	
 	ctx := context.Background()
 
@@ -73,7 +72,7 @@ func NewChord(config *Config, ip string, joinNode string) (*Chord, error) {
 		return nil, err
 	}
 	
-	listener := chord.network.Listener(l) // listener with latency injected
+	// listener := chord.network.Listener(l) // listener with latency injected
 
 	chord.grpcServer = grpc.NewServer()
 
@@ -86,11 +85,11 @@ func NewChord(config *Config, ip string, joinNode string) (*Chord, error) {
 		return nil, err
 	}
 
-	info := benchmark.ServerInfo{Type: "protobuf", Listener: l}
+	// info := benchmark.ServerInfo{Type: "protobuf", Listener: l}
 
-	benchmark.StartServer(info)
+	// benchmark.StartServer(info)
 
-	go chord.grpcServer.Serve(listener)
+	go chord.grpcServer.Serve(l)
 
 	go func() {
 		

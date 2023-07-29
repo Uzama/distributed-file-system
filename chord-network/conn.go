@@ -30,7 +30,6 @@ func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, err
 
 	grpc, ok := c.connectionsPool[remoteIP]
 	if ok {
-		c.connLock.RUnlock()
 		return grpc.Client, nil
 	}
 

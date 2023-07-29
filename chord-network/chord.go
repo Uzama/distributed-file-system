@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"math/big"
 	"sync"
@@ -343,4 +344,30 @@ func (c *Chord) Stabilize(ctx context.Context) error {
 	_, err = c.notify(ctx, c.GetSuccessor(), c.Node)
 	
 	return err
+}
+
+func (c *Chord) Join(ctx context.Context, joinNode *proto.Node) error {
+	
+	c.fingerLock.Lock()
+	c.fingerLock.Unlock()
+
+	c.predecessor = nil
+	
+	if joinNode.Ip == "" { // first node in the ring
+		c.fingerTable[0] = c.Node
+		return nil
+	}
+
+	successor, err := c.findSuccessor(ctx, joinNode, c.Id)
+	if err != nil {
+		return err 
+	}
+
+	if idsEqual(successor.Id, c.Id) {
+		return errors.New("Node with same ID already exists in the ring")
+	}
+	
+	c.fingerTable[0] = successor
+
+	return nil
 }

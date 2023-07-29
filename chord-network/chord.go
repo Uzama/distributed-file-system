@@ -262,6 +262,10 @@ func (c *Chord) FixFingers(ctx context.Context, i int) (int, error) {
 	return i, nil
 }
 
+func (c *Chord) StopFixFingers() {
+	close(c.stopChan)
+}
+
 // Rransfer keys from current node to target
 func (c *Chord) TransferKeys(ctx context.Context, target *proto.Node, start []byte, end []byte) (int, error) {
 	
@@ -371,3 +375,28 @@ func (c *Chord) Join(ctx context.Context, joinNode *proto.Node) error {
 
 	return nil
 }
+
+func (c *Chord) Leave(ctx context.Context) {
+	
+	c.logger.Printf("%s leaving the ring\n", c.Id)
+
+	c.StopFixFingers()
+	
+	c.grpcServer.GracefulStop()
+
+	successor := c.GetSuccessor()
+	pred := c.GetPredecessor()
+
+	if !idsEqual(successor.Id, c.Id) && pred != nil {
+		
+		count, _ := c.TransferKeys(ctx, successor, pred.Id, c.Id)
+		c.logger.Printf("number of transfered keys: %d\n", count)
+
+		c.setPredecessor(ctx, successor, pred)
+		c.setSuccessor(ctx, pred, successor)
+	}
+
+	chord.Stop()
+}
+
+

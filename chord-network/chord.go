@@ -152,6 +152,36 @@ func (c *Chord) FindPredecessor(ctx context.Context, id []byte) (*proto.Node, er
 	return closest, nil
 }
 
+// For fix finger tables
+func (c *Chord) FFindPredecessor(ctx context.Context, id []byte) (*proto.Node, error) {
+	
+	closest := c.FindClosestPrecedingNode(id)
+	
+	if idsEqual(closest.Id, c.Id) {
+		return closest, nil
+	}
+
+	closestSucc, err := c.getSuccessor(ctx, closest) // get closest successor
+	if err != nil {
+		return nil, err
+	}
+
+	for !betweenRightInclusive(id, closest.Id, closestSucc.Id) {
+		
+		closest, err := c.findClosestPrecedingNode(ctx, closest, id)
+		if err != nil {
+			return nil, err
+		}
+
+		closestSucc, err = c.getSuccessor(ctx, closest) // get closest successor
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return closest, nil
+}
+
 func (c *Chord) FindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
 	
 	c.tracerLock.Lock()
@@ -173,4 +203,60 @@ func (c *Chord) FindSuccessor(ctx context.Context, id []byte) (*proto.Node, erro
 	c.tracer.endTracer(successor.Id)
 
 	return successor, nil
+}
+
+// For fix finger tables
+func (c *Chord) FFindSuccessor(ctx context.Context, id []byte) (*proto.Node, error) {
+
+	c.tracer.startTracer(c.Id, id)
+	
+	pred, err := c.FindPredecessor(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	successor, err := c.getSuccessor(ctx, pred)
+	if err != nil {
+		return nil, err
+	}
+
+	return successor, nil
+}
+
+func (c *Chord) fingerStart(i int) []byte {
+	
+	currID := new(big.Int).SetBytes(c.Id)
+
+	offset := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(i)), nil)
+
+	max := big.NewInt(0).Exp(big.NewInt(2), big.NewInt(int64(c.config.ringSize)), nil)
+
+	start := new(big.Int).Add(currID, offset)
+	
+	start.Mod(start, max)
+
+	if len(start.Bytes()) == 0 {
+		return []byte{0}
+	}
+
+	return start.Bytes()
+}
+
+// Periodically refresh finger table 
+func (c *Chord) FixFingers(ctx context.Context, i int) (int, error) {
+	
+	i = (i + 1) % c.config.ringSize
+	
+	fingerStart := c.fingerStart(i)
+	
+	finger, err := c.FFindSuccessor(ctx, fingerStart)
+	if err != nil {
+		return 0, err
+	}
+
+	c.fingerLock.Lock()
+	c.fingerTable[i] = finger
+	c.fingerLock.Unlock()
+
+	return i, nil
 }

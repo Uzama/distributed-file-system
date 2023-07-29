@@ -1,20 +1,30 @@
 syntax = "proto3";
 
-package chordrpc;
+package main;
+
+option go_package = "github.com/example/path/gen;gen";
 
 // Communication is the service for chord communication
 service Communication {
     rpc FindSuccessor(ID) returns (Node); // Returns successor node of ID.
+
     rpc FindClosestPrecedingNode(ID) returns (Node); // Returns closest node of ID in the finger table.
+
     rpc GetPredecessor(NN) returns (Node); // Returns current node's predecessor.
+
     rpc GetSuccessor(NN) returns (Node); // Returns current node's successor.
+
     rpc SetPredecessor(Node) returns (NN);
+
     rpc SetSuccessor(Node) returns (NN);
+
     rpc Notify(Node) returns (NN); // Notifies Chord that Node might be the predecessor.
 
     // Store
     rpc Get(GetRequest) returns (GetReply);
+
     rpc Put(PutRequest) returns (PutReply);
+    
     rpc ListKeys(ListKeysRequest) returns (ListKeysReply);
 }
 

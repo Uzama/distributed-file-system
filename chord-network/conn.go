@@ -16,6 +16,7 @@ type GRPCConn struct {
 
 // Returns a grpc.ClientConn
 func Dial(ip string, options ...grpc.DialOption) (*grpc.ClientConn, error) {
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -23,6 +24,7 @@ func Dial(ip string, options ...grpc.DialOption) (*grpc.ClientConn, error) {
 }
 
 func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, error) {
+	
 	c.connLock.RLock()
 	defer c.connLock.RUnlock()
 
@@ -43,6 +45,7 @@ func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, err
 	c.logger.Println("connect-to-temote: dialed success")
 
 	client := proto.NewCommunicationClient(conn)
+	
 	grpc = &GRPCConn{remoteIP, client, conn}
 
 	c.connectionsPool[remoteIP] = grpc
@@ -50,63 +53,115 @@ func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, err
 	return client, nil
 }
 
-func (c *Chord) notify(remote *proto.Node, potentialPredecessor *proto.Node) (*proto.NN, error) {
+func (c *Chord) notify(ctx context.Context, remote *proto.Node, potentialPredecessor *proto.Node) (*proto.NN, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.Notify(context.Background(), potentialPredecessor)
+	result, err := client.Notify(ctx, potentialPredecessor)
+
 	return result, err
 }
 
-func (c *Chord) findSuccessor(remote *proto.Node, id []byte) (*proto.Node, error) {
+func (c *Chord) findSuccessor(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.FindSuccessor(context.Background(), &proto.ID{Id: id})
+	result, err := client.FindSuccessor(ctx, &proto.ID{Id: id})
+
 	return result, err
 }
 
 // Returns closest node based on ID
-func (c *Chord) findClosestPrecedingNode(remote *proto.Node, id []byte) (*proto.Node, error) {
+func (c *Chord) findClosestPrecedingNode(ctx context.Context, remote *proto.Node, id []byte) (*proto.Node, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.FindClosestPrecedingNode(context.Background(), &proto.ID{Id: id})
+	result, err := client.FindClosestPrecedingNode(ctx, &proto.ID{Id: id})
+
 	return result, err
 }
 
-func (c *Chord) getSuccessor(remote *proto.Node) (*proto.Node, error) {
+func (c *Chord) getSuccessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.GetSuccessor(context.Background(), &proto.NN{})
+	result, err := client.GetSuccessor(ctx, &proto.NN{})
+
 	return result, err
 }
 
-func (c *Chord) getPredecessor(remote *proto.Node) (*proto.Node, error) {
+func (c *Chord) getPredecessor(ctx context.Context, remote *proto.Node) (*proto.Node, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.GetPredecessor(context.Background(), &proto.NN{})
+	result, err := client.GetPredecessor(ctx, &proto.NN{})
+
 	return result, err
 }
 
-func (c *Chord) setPredecessor(remote *proto.Node, pred *proto.Node) (*proto.NN, error) {
+func (c *Chord) setPredecessor(ctx context.Context, remote *proto.Node, pred *proto.Node) (*proto.NN, error) {
+	
 	client, err := c.connectToRemote(remote.Ip)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.SetPredecessor(context.Background(), pred)
+	result, err := client.SetPredecessor(ctx, pred)
+
 	return result, err
+}
+
+func (c *Chord) setSuccessor(ctx context.Context, remote *proto.Node, succ *proto.Node) (*proto.NN, error) {
+	
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.SetSuccessor(ctx, succ)
+
+	return result, err
+}
+
+func (c *Chord) get(ctx context.Context, remoteIP string, key string) (string, error) {
+	
+	client, err := c.connectToRemote(remoteIP)
+	if err != nil {
+		return "", err
+	}
+
+	request := &proto.GetRequest{Key: key}
+	
+	result, err := client.Get(ctx, request)
+	
+	return result.Key, err
+}
+
+func (c *Chord) put(ctx context.Context, remoteIP string, key string) error {
+	
+	client, err := c.connectToRemote(remoteIP)
+	if err != nil {
+		return err
+	}
+
+	request := &proto.PutRequest{Key: key}
+
+	_, err = client.Put(ctx, request)
+
+	return err
 }

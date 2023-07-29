@@ -49,3 +49,13 @@ func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, err
 
 	return client, nil
 }
+
+func (c *Chord) notify(remote *proto.Node, potentialPredecessor *proto.Node) (*proto.NN, error) {
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.Notify(context.Background(), potentialPredecessor)
+	return result, err
+}

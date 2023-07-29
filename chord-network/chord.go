@@ -396,7 +396,24 @@ func (c *Chord) Leave(ctx context.Context) {
 		c.setSuccessor(ctx, pred, successor)
 	}
 
-	chord.Stop()
+	c.Stop()
+}
+
+// Gracefully stops the instance
+func (c *Chord) Stop() {
+	
+	c.logger.Printf("%s stopping outgoing connections\n", c.Ip)
+	
+	c.connLock.Lock()
+	defer c.connLock.Unlock()
+
+	for _, connection := range c.connectionsPool {
+		
+		err := connection.Conn.Close()
+		if err != nil {
+			c.logger.Println(err)
+		}
+	}
 }
 
 

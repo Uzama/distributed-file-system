@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -54,10 +56,17 @@ func main() {
 
 	cfg := defaultConfig()
 
-	h, err := newChord(cfg, connection, joinNode, username, b)
+	chord, err := newChord(cfg, connection, joinNode, username, b)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			fmt.Println(chord.Print())
+		}
+	}()
 
 	// strat the background rargoutines
 	c := make(chan os.Signal, 1)
@@ -66,7 +75,7 @@ func main() {
 
 	<-c
 
-	h.leave(context.Background())
+	chord.leave(context.Background())
 
 	os.Exit(0)
 

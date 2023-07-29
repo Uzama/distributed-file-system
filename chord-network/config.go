@@ -37,6 +37,8 @@ type Config struct {
 	networkSimulator *latency.Network
 }
 
+var DefaultConfig = defaultConfig()
+
 // DefaultConfig returns a default configuration for chord
 func defaultConfig() *Config {
 	config := &Config{

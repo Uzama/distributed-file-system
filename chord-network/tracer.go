@@ -22,7 +22,7 @@ func MakeTracer() *Tracer {
 	return &tracer
 }
 
-// reset tracer
+//reset tracer
 func (tracer *Tracer) resetTracer() {
 
 	tracer.numHops = 0
@@ -86,3 +86,4 @@ func (tracer *Tracer) Latency() string {
 	mili = mili / 1000000
 	return fmt.Sprintf("latency: %v", mili)
 }
+

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"sync"
 
@@ -44,4 +45,22 @@ type Chord struct {
 
 	logger *log.Logger
 	network *latency.Network
+}
+
+func (c *Chord) get(ctx context.Context, key string) (string, error) {
+	c.storeLock.RLock()
+	defer c.storeLock.RLock()
+	
+	_, ok := c.store.Get(ctx, key)
+	if ok != nil {
+		return "", ok
+	}
+	return key, nil
+}
+
+func (c *Chord) put(ctx context.Context, key string) {
+	c.storeLock.RLock()
+	defer c.storeLock.RLock()
+
+	c.store.Put(ctx, key)
 }

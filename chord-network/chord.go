@@ -33,7 +33,7 @@ type Chord struct {
 	connectionsPool     map[string]*GRPCConn // this takes care of all connections
 	connLock sync.RWMutex
 
-	// tracer     *Tracer // for testing latency and hops
+	tracer *Tracer
 	tracerRWMu sync.RWMutex
 
 	config *Config
@@ -44,6 +44,7 @@ type Chord struct {
 
 // Returns hashed values in []byte
 func (c *Chord) hash(IP string) []byte {
+	
 	h := c.config.Hash()
 	
 	h.Write([]byte(IP))
@@ -63,6 +64,7 @@ func (c *Chord) hash(IP string) []byte {
 }
 
 func (c *Chord) Get(ctx context.Context, key string) (string, error) {
+	
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
 	
@@ -74,8 +76,25 @@ func (c *Chord) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (c *Chord) Put(ctx context.Context, key string) {
+	
 	c.storeLock.RLock()
 	defer c.storeLock.RLock()
 
 	c.store.Put(ctx, key)
+}
+
+func (c *Chord) GetSuccessor() *proto.Node {
+	
+	c.fingerLock.RLock()
+	defer c.fingerLock.RUnlock()
+
+	return c.fingerTable[0]
+}
+
+func (c *Chord) GetPredecessor() *proto.Node {
+	
+	c.predecessorLock.RLock()
+	defer c.predecessorLock.RUnlock()
+
+	return c.predecessor
 }

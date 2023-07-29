@@ -90,3 +90,13 @@ func (c *Chord) getSuccessor(remote *proto.Node) (*proto.Node, error) {
 	result, err := client.GetSuccessor(context.Background(), &proto.NN{})
 	return result, err
 }
+
+func (c *Chord) getPredecessor(remote *proto.Node) (*proto.Node, error) {
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.GetPredecessor(context.Background(), &proto.NN{})
+	return result, err
+}

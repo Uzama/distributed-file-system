@@ -98,3 +98,23 @@ func (c *Chord) GetPredecessor() *proto.Node {
 
 	return c.predecessor
 }
+
+// Returns the closest finger based on fingerTablex
+func (c *Chord) FindClosestPrecedingNode(id []byte) *proto.Node {
+	
+	c.fingerLock.RLock()
+	defer c.fingerLock.RUnlock()
+
+	for i := c.config.ringSize - 1; i >= 0; i-- {
+		
+		if c.fingerTable[i] != nil {
+			
+			if between(c.fingerTable[i].Id, c.Id, id) {
+				
+				return c.fingerTable[i]
+			}
+		}
+	}
+
+	return c.Node
+}

@@ -69,3 +69,14 @@ func (c *Chord) findSuccessor(remote *proto.Node, id []byte) (*proto.Node, error
 	result, err := client.FindSuccessor(context.Background(), &proto.ID{Id: id})
 	return result, err
 }
+
+// Returns closest node based on ID
+func (c *Chord) findClosestPrecedingNode(remote *proto.Node, id []byte) (*proto.Node, error) {
+	client, err := c.connectToRemote(remote.Ip)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := client.FindClosestPrecedingNode(context.Background(), &proto.ID{Id: id})
+	return result, err
+}

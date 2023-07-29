@@ -75,7 +75,7 @@ func newChord(config *Config, ip string, joinNode string, username string, boots
 	chord.network = &latency.Network{Kbps: 100 * 1024, Latency: 2 * time.Millisecond, MTU: 1500}
 	l, err := net.Listen("tcp", ip)
 	if err != nil {
-		chord.logger.Println(err)
+		// chord.logger.Println(err)
 		return nil, err
 	}
 	
@@ -531,14 +531,14 @@ func (c *Chord) stop() {
 
 func (c *Chord) Print() string {
 	
-	c.fingerLock.RLock()
-	defer c.fingerLock.RUnlock()
+	// c.fingerLock.RLock()
+	// defer c.fingerLock.RUnlock()
 
-	c.predecessorLock.RLock()
-	defer c.predecessorLock.RUnlock()
+	// c.predecessorLock.RLock()
+	// defer c.predecessorLock.RUnlock()
 
-	c.storeLock.RLock()
-	defer c.storeLock.RUnlock()
+	// c.storeLock.RLock()
+	// defer c.storeLock.RUnlock()
 	
 	str := fmt.Sprintf("id: %v ip: %v username: %s \n",  c.Id, c.Ip, c.username)
 

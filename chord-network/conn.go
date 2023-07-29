@@ -25,23 +25,19 @@ func Dial(ip string, options ...grpc.DialOption) (*grpc.ClientConn, error) {
 
 func (c *Chord) connectToRemote(remoteIP string) (proto.CommunicationClient, error) {
 	
-	c.connLock.RLock()
-	defer c.connLock.RUnlock()
+	c.connLock.Lock()
+	defer c.connLock.Unlock()
 
 	grpc, ok := c.connectionsPool[remoteIP]
 	if ok {
 		return grpc.Client, nil
 	}
 
-	c.logger.Printf("connect-to-temote: dialing to %s\n", remoteIP)
-
 	conn, err := Dial(remoteIP, c.config.DialOptions...)
 	if err != nil {
 		c.logger.Printf("connect-to-temote: dialing failed to %s\n", err.Error())
 		return nil, err
 	}
-
-	c.logger.Println("connect-to-temote: dialed success")
 
 	client := proto.NewCommunicationClient(conn)
 	

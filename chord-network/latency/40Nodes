@@ -1,0 +1,37 @@
+=== RUN   TestLatency40Nodes
+id: [0] ip: 127.0.0.1:5048 username: a 
+Finger table:
+ith | start | successor
+0   | 1     | [1]
+1   | 2     | [2]
+2   | 4     | [3]
+3   | 8     | [29]
+4   | 16     | [22]
+5   | 32     | [23]
+6   | 64     | [0]
+7   | 128     | [0]
+Predecessor: [39]
+
+hops: 1344 latency: 843.859791
+hops: 3 latency: 1.687417
+hops: 3 latency: 1.562875
+hops: 3 latency: 1.652167
+hops: 3 latency: 1.449209
+hops: 3 latency: 1.895834
+hops: 25779 latency: 15244.001542
+hops: 3 latency: 1.756875
+hops: 3 latency: 1.129416
+hops: 17563 latency: 10921.84375
+hops: 3 latency: 1.674084
+hops: 3 latency: 1.652042
+hops: 92 latency: 53.359167
+hops: 1 latency: 0.109792
+hops: 3 latency: 0.728041
+hops: 3 latency: 1.126416
+hops: 1787 latency: 875.707541
+hops: 3 latency: 1.136667
+hops: 3 latency: 0.996666
+hops: 3 latency: 0.756542
+--- PASS: TestLatency40Nodes (48.02s)
+PASS
+ok  	chord-network	48.668s

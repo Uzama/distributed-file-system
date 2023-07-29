@@ -314,3 +314,33 @@ func (c *Chord) Notify(ctx context.Context, potentialPredecessor *proto.Node) er
 
 	return nil
 }
+
+// Periodically verify node's immediate successor
+func (c *Chord) Stabilize(ctx context.Context) error {
+	
+	successor := c.GetSuccessor()
+	
+	x, err := c.getPredecessor(ctx, successor)
+
+	if x == nil || err != nil {
+		c.logger.Println("RPC fails or the successor node died")
+		return err
+	}
+
+	// the pred of our succ is nil, it hasn't updated it pred, still notify
+	if x.Id == nil {
+		_, err = c.notify(ctx, c.GetSuccessor(), c.Node)
+		return err
+	}
+
+	// found new successor
+	if between(x.Id, c.Id, successor.Id) {
+		c.fingerLock.Lock()
+		c.fingerTable[0] = x
+		c.fingerLock.Unlock()
+	}
+
+	_, err = c.notify(ctx, c.GetSuccessor(), c.Node)
+	
+	return err
+}

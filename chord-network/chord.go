@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -516,6 +517,70 @@ func (c *Chord) stop() {
 			c.logger.Println(err)
 		}
 	}
+}
+
+func (c *Chord) Print() string {
+	
+	c.fingerLock.RLock()
+	defer c.fingerLock.RUnlock()
+
+	c.predecessorLock.RLock()
+	defer c.predecessorLock.RUnlock()
+
+	c.storeLock.RLock()
+	defer c.storeLock.RUnlock()
+	
+	str := fmt.Sprintf("id: %v ip: %v\n",  c.Id, c.Ip)
+
+	str += "Finger table:\n"
+	str += "ith | start | successor\n"
+	
+	for i := 0; i < c.config.ringSize; i++ {
+		
+		if c.fingerTable[i] == nil {
+			continue
+		}
+
+		currID := new(big.Int).SetBytes(c.Id)
+
+		offset := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(i)), nil)
+
+		maxVal := big.NewInt(0)
+
+		maxVal.Exp(big.NewInt(2), big.NewInt(int64(c.config.ringSize)), nil)
+
+		start := new(big.Int).Add(currID, offset)
+
+		start.Mod(start, maxVal)
+
+		successor := c.fingerTable[i].Id
+
+		str += fmt.Sprintf("%d   | %d     | %d\n", i, start, successor)
+	}
+
+	str += fmt.Sprintf("Predecessor: ")
+
+	if c.predecessor == nil {
+
+		str += fmt.Sprintf("none\n")
+
+	} else {
+		
+		str += fmt.Sprintf("%v\n", c.predecessor.Id)
+	}
+
+	keys := c.store.GetKeys(context.Background())
+
+	if len(keys) != 0 {
+		
+		str += fmt.Sprintf("no of key: total %d\n", len(keys))
+		
+		for _, key := range keys {
+			str += fmt.Sprintf("%s ", key)
+		}
+	}
+
+	return str
 }
 
 

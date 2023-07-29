@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"sync"
 )
 
 type Store interface {
@@ -13,7 +12,6 @@ type Store interface {
 
 type store struct {
 	store map[string]struct{}
-	mutex    *sync.RWMutex
 }
 
 func NewStore() Store {
@@ -23,20 +21,14 @@ func NewStore() Store {
 }
 
 func (s *store) Get(ctx context.Context, key string) (string, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
 	_, ok := s.store[key]
 	if ok {
 		return key, nil
 	}
-	return "", errors.New("key not existing")
+	return "", errors.New("key not available")
 }
 
 func (s *store) Put(ctx context.Context, key string) (error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	
 	s.store[key] = struct{}{}
 
 	return nil
